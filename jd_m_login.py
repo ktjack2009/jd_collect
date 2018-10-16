@@ -69,12 +69,13 @@ def get_sid():
 	return sid
 
 
-def get_import_cookie()
+def get_import_cookie():
 	# 获取关键cookie
 	session.get('https://wq.jd.com/mlogin/mpage/Login?rurl=https://home.m.jd.com/myJd/newhome.action')
 
 
 def get_info():
+	sid = session.cookies.get_dict().get('sid')
 	# 可以拿到curPin levelName(用户等级) isVerified(是否实名) nickname isPlus jvalue(京享值)
 	r = session.get('https://home.m.jd.com/myJd/newhome.action')
 
@@ -102,10 +103,9 @@ def get_info():
 
 
 def main():
-	session = requests.Session()
 	username = ''
 	password = ''
-	if login(username, password)
+	if login(username, password):
 		sid = get_sid()
 		get_import_cookie()
 		get_info()
@@ -113,4 +113,5 @@ def main():
 		exit()
 
 if __name__ == '__main__':
+	session = requests.Session()
 	main()
