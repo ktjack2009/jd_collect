@@ -69,5 +69,5 @@ g = [["1148", "435", 1539942700133],
 
 import execjs
 
-obj = execjs.compile(open('./conver_loc.js').read())
+obj = execjs.compile(open('./conver_trace.js').read())
 d = obj.call('gc', g)
