@@ -3,104 +3,110 @@ import random
 import re
 from lxml import html
 import execjs
+from generate_function import generate_eid, generate_d
+
 session = requests.Session()
 headers = {
-	'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_13_6) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/69.0.3497.100 Safari/537.36',
+    'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_13_6) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/69.0.3497.100 Safari/537.36',
 }
 
+
 def get_pubKey_sq_token():
-	url = 'https://passport.jd.com/new/login.aspx'
-	r = session.get(url, headers=headers, verify=False)
-	root = html.fromstring(r.text)
-	pubKey = root.xpath('//*[@id="pubKey"]/@value')[0]
-	sa_token = root.xpath('//*[@id="sa_token"]/@value')[0]
-	uuid = root.xpath('//*[@id="uuid"]/@value')[0]
-	return pubKey, sa_token, uuid
+    url = 'https://passport.jd.com/new/login.aspx'
+    r = session.get(url, headers=headers, verify=False)
+    root = html.fromstring(r.text)
+    pubKey = root.xpath('//*[@id="pubKey"]/@value')[0]
+    sa_token = root.xpath('//*[@id="sa_token"]/@value')[0]
+    uuid = root.xpath('//*[@id="uuid"]/@value')[0]
+    return pubKey, sa_token, uuid
 
 
 def get_seqSid():
-	url = 'https://seq.jd.com/jseqf.html?bizId=passport_jd_com_login_pc&platform=js&version=1'
-	r = session.get(url, headers=headers, verify=False)
-	seqSid = re.compile('sessionId="(.+?)"').findall(r.text)[0]
-	return seqSid
+    url = 'https://seq.jd.com/jseqf.html?bizId=passport_jd_com_login_pc&platform=js&version=1'
+    r = session.get(url, headers=headers, verify=False)
+    seqSid = re.compile('sessionId="(.+?)"').findall(r.text)[0]
+    return seqSid
 
 
 def get_authcode_c(eid):
-	url = 'https://iv.jd.com/slide/g.html'
-	payload = {
-		'appId': '1604ebb2287',
-		'scene': 'login',
-		'product': 'bind-suspend',
-		'e': eid,
-		'callback': '',
-	}
-	r = session.get(url, params=payload, verify=False)
-	return r.json()['challenge']
+    url = 'https://iv.jd.com/slide/g.html'
+    payload = {
+        'appId': '1604ebb2287',
+        'scene': 'login',
+        'product': 'bind-suspend',
+        'e': eid,
+        'callback': '',
+    }
+    r = session.get(url, params=payload, verify=False)
+    return r.json()['challenge']
 
 
 def get_authcode(d, c, eid, seqSid, username):
-	url = 'https://iv.jd.com/slide/s.html'
-	payload = {
-		'd': d,
-		'c': c,
-		'w': '0',
-		'appId': '1604ebb2287',
-		'scene': 'login',
-		'product': 'bind-suspend',
-		'e': eid,
-		's': seqSid,
-		'o': username,
-		'callback': '',
-	}
-	r = session.get(url, params=payload, verify=False)
-	return r.json()['validate']
-	# 返回值有 authcode
+    url = 'https://iv.jd.com/slide/s.html'
+    payload = {
+        'd': d,
+        'c': c,
+        'w': '0',
+        'appId': '1604ebb2287',
+        'scene': 'login',
+        'product': 'bind-suspend',
+        'e': eid,
+        's': seqSid,
+        'o': username,
+        'callback': '',
+    }
+    r = session.get(url, params=payload, verify=False)
+    print(r.text)
+    return r.json()['validate']
+
+
+# 返回值有 authcode
 
 
 def encrypt(key, pwd):
-	obj = execjs.compile(open('./jd_rsa.js').read())
-	password = obj.call('encryptStr', key, pwd)
-	return password
+    obj = execjs.compile(open('./jd_rsa.js').read())
+    password = obj.call('encryptStr', key, pwd)
+    return password
 
 
 def login(uuid, eid, authcode, pubKey, sa_token, seqSid, username, password):
-	url = 'https://passport.jd.com/uc/loginService'
-	data = {
-		'uuid': uuid,
-		'eid': eid,
-		'fp': '',
-		'_t': '_t',
-		'loginType': 'c',
-		'loginname': username,
-		'nloginpwd': encrypt(pubKey, password),
-		'authcode': authcode,
-		'pubKey': pubKey, 
-		'sa_token': sa_token,   
-		'seqSid': seqSid,
-		'useSlideAuthCode': '1',
-	}
-	payload = {
-		'uuid': uuid,
-		'r': random.random(),
-		'version': '2015',
-	}
-	r = session.post(url, params=payload, data=data, verify=False)
-	print(r.text)
+    url = 'https://passport.jd.com/uc/loginService'
+    data = {
+        'uuid': uuid,
+        'eid': eid,
+        'fp': '',
+        '_t': '_t',
+        'loginType': 'c',
+        'loginname': username,
+        'nloginpwd': encrypt(pubKey, password),
+        'authcode': authcode,
+        'pubKey': pubKey,
+        'sa_token': sa_token,
+        'seqSid': seqSid,
+        'useSlideAuthCode': '1',
+    }
+    payload = {
+        'uuid': uuid,
+        'r': random.random(),
+        'version': '2015',
+    }
+    r = session.post(url, params=payload, data=data, verify=False)
+    print(r.text)
 
 
 def get_info():
-	r = session.get('http://i.jd.com/user/info')
-	print(r.text)
+    r = session.get('http://i.jd.com/user/info')
+    print(r.text)
 
 
 if __name__ == '__main__':
-	username = ''
-	password = ''
-	eid = '7TH75RWVD7PKYQY5PKBD25CUG3IZAAPJIHFI56NWOLF4A6PLVB5OKWRVJL7E45IHYAYDURVKQHDWS7OKTXVUQBH2PA'
-	pubKey, sa_token, uuid = get_pubKey_sq_token()
-	seqSid = get_seqSid()
-	challenge = get_authcode_c(eid)
-	d = '0hP0033mq13mvu000102000700000000010011020007000000000100110100070000000001101000008U000000000110100000070000000001102101000700000000021031020006000000000210310300090000000001105104000500000000011031040006000000000110210300070000000001104104000700000000011031050008000000000110210400070000000001103104000600000000011021040007000000000110310300070000000001102103000700000000011031030007000000000110510400080000000001105103000600000000011081020007000000000110e1020007000000000110g1010008000000000110y0000006000000000110s0050007000000000110x00a0008000000000010F00e0007000000000110K00h0008000000000100101T00tN000000000101210h0004000000000100X10j0007000000000100R10g0007000000000100j1070008000000000100E10e0007000000000100w10e0007000000000100q10b0007000000000100n10a0006000000000200j109000700000000010071040006000000000100f1080008000000000100d1070007000000000100b1070007000000000100a1070006000000000100310200070000000001008105000800000000010061050007000000000100510400080000000001004103000600000000010041030007000000000100310300070000000001003103000700000000010031020007000000000100510600070000000001002102000700000000010041030007000000000100310300070000000001004104000700000000010041040008000000000100010100470000000000000101000700000000010001020007000000000100010200070000000001000101000700000000010011020007000000000100010300070000000001001101000700000000010001020007000000000100010100070000000001000101000700000000010001010007000000000100000000070000000001000101000700000000010000000007000000000100000000070000000001000000000g0000000001000101000f000000000110100000060000000001000101000800000000011011020007000000000110110100070000000001000101004700000000010001010007000000000100010100070000000001000101000700000000010001020007000000000100010100070000000001000101000700000000010001010007000000000100010100070000000001000000000700000000010001010007000000000100000000070000000001000000004Z000000001A000000003h000000002z03503L01pl000000001q000000005y00000000ey000000005m000000001U000000000110210200070000000001102102000700000000011021030007000000000110210300070000000003101102000f000000000f02N10500nD0000000002102000000400000000011021020007000000000010310200090000000000104104000700000000001091070008000000000110c1080007000000000110g10a0007000000000110y10j0007000000000110u10f0008000000000111010v0007000000000110R10m0007000000000010-10n0008000000000110-10q0007000000000210r10b0006000000000110M10m0007000000000110f1090007000000000210b1060006000000000110n10e000700000000011061040007000000000110e10800070000000001108106000700000000011011020007000000000110510300070000000001102103000700000000011011010007000000000110110200070000000001000000002f000000000100110200070000000001000103000700000000010021020008000000000100110300060000000001001103000700000000010031050007000000000100310600070000000001003106000800000000010021030006000000000100510b000700000000010011030008000000000100410500060000000001002105000700000000010031040008000000000100010200060000000001002102000700000000010031030008000000000100210100090000000001'
-	validate = get_authcode(d, challenge, eid, seqSid, username)
-	login(uuid, eid, validate, pubKey, sa_token, seqSid, username, password)
-	# get_info()
+    username = ''
+    password = ''
+    eid = generate_eid()
+    pubKey, sa_token, uuid = get_pubKey_sq_token()
+    seqSid = get_seqSid()
+    challenge = get_authcode_c(eid)
+    d = generate_d()
+    validate = get_authcode(d, challenge, eid, seqSid, username)
+    # login(uuid, eid, validate, pubKey, sa_token, seqSid, username, password)
+    # get_info()
